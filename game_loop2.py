@@ -143,9 +143,16 @@ def load_full_map(world_map_file_path):
         world_map_data = {}
         return False
     
-    # Determine the total size of the world map in tiles
-    map_pages_y = len(world_map_data)
-    map_pages_x = max(len(world_map_data[y]) for y in world_map_data)
+    # --- FIX START ---
+    # Determine the total size of the world map by finding the max key value
+    map_pages_y = max(int(y) for y in world_map_data.keys()) + 1
+    
+    map_pages_x = 0
+    for y in world_map_data:
+        max_x_in_row = max(int(x) for x in world_map_data[y].keys()) + 1
+        if max_x_in_row > map_pages_x:
+            map_pages_x = max_x_in_row
+    # --- FIX END ---
             
     # Load the first map to get the tile size and dimensions
     first_map_file = world_map_data.get('0', {}).get('0')

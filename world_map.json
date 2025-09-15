@@ -20,6 +20,8 @@
     "8": "maps/map_2_8.json"
 },
 "3": {
-    "8": "maps/map_3_8.json"
+    "8": "maps/map_3_8.json",
+    "9": "maps/map_3_9.json",
+    "10": "maps/map_3_10.json"
 }
 }
