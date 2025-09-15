@@ -1,0 +1,25 @@
+{
+"0": {
+"0": "maps/map_0_0.json",
+"1": "maps/map_0_1.json",
+"2": "maps/map_0_2.json",
+"3": "maps/map_0_3.json",
+"4": "maps/map_0_4.json",
+"5": "maps/map_0_5.json",
+"6": "maps/map_0_6.json",
+"7": "maps/map_0_7.json",
+"8": "maps/map_0_8.json"
+},
+"1": {
+"0": "maps/map_1_0.json",
+"1": "maps/map_1_1.json",
+"8": "maps/map_1_8.json"
+},
+
+"2": {
+    "8": "maps/map_2_8.json"
+},
+"3": {
+    "8": "maps/map_3_8.json"
+}
+}
