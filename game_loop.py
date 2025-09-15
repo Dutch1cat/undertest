@@ -10,6 +10,7 @@ from player import Player
 from dialogue_manager import DialogueManager
 from battle import Attack, BossBattle, pattern_wave, pattern_spike, pattern_chase, pattern_circle_spiral, pattern_diagonal_cross, pattern_straight_line, pattern_center_out, pattern_left_to_right, pattern_random_spawn, pattern_random_walk, pattern_top_to_bottom
 from block import BLOCK_INFO, generate_block_image
+from player_stats import PlayerStats 
 
 # === Global Variables for Game State ===
 # We use this to switch between the overworld, dialogue, and battle
@@ -243,6 +244,7 @@ def check_player_collision(new_x, new_y, player_rect_width, player_rect_height):
 
 # === Main Game Loop ===
 if __name__ == "__main__":
+    player_stats = PlayerStats()
     pygame.init()
     pygame.mixer.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -286,7 +288,8 @@ if __name__ == "__main__":
         boss_leafy=True,
         dialogue_manager=dialogue_manager,
         spare_phrase="IN THIS WORLD ITS KILL OR BE KILLED",
-        max_happiness=20000
+        max_happiness=20000,
+        player_stats=player_stats
     )
 
     # Create the battle instance for Ghost
@@ -303,7 +306,8 @@ if __name__ == "__main__":
         boss_hp=10,
         dialogue_manager=dialogue_manager,
         max_happiness=20,
-        spare_phrase="* Ghost seems confused *"
+        spare_phrase="* Ghost seems confused *",
+        player_stats=player_stats
     )
 
     scali_attacks = [
@@ -318,7 +322,8 @@ if __name__ == "__main__":
         boss_hp=15,
         dialogue_manager=dialogue_manager,
         max_happiness=30,
-        spare_phrase="* Scali seems confused *"
+        spare_phrase="* Scali seems confused *",
+        player_stats=player_stats
     )
     
     # Load and play overworld music
@@ -487,7 +492,8 @@ if __name__ == "__main__":
                         boss_hp=10,
                         dialogue_manager=DialogueManager(),  # Add this line!
                         max_happiness=20,
-                        spare_phrase="* Ghost seems confused *"
+                        spare_phrase="* Ghost seems confused *",
+                        player_stats=player_stats
                     )
                 if active_boss == "scali":
                     # Reset the scali battle instance with proper dialogue_manager
@@ -499,7 +505,8 @@ if __name__ == "__main__":
                         boss_hp=15,
                         dialogue_manager=DialogueManager(),  # Add this line!
                         max_happiness=30,
-                        spare_phrase="* Scali seems confused *"
+                        spare_phrase="* Scali seems confused *",
+                        player_stats=player_stats
                     )
                 if active_boss == "leafy":
                     leafy_done = True

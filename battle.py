@@ -234,7 +234,8 @@ class Attack:
                 screen.blit(self.image, obj)
 
 class BossBattle:
-    def __init__(self, boss_name, boss_img_path, heart_img_path, attacks, boss_hp, max_happiness=20,spare_phrase=None,boss_leafy=False, dialogue_manager=None):
+    def __init__(self, boss_name, boss_img_path, heart_img_path, attacks, boss_hp, player_stats, 
+                 exp_reward=10, max_happiness=20, spare_phrase=None, boss_leafy=False, dialogue_manager=None):
         self.boss_name = boss_name
         self.boss_img_path = boss_img_path
         self.heart_img_path = heart_img_path
@@ -243,7 +244,9 @@ class BossBattle:
         self.heart_img = None
         self.heart_rect = None
         self.boss_hp = boss_hp
-        self.player_hp = 30
+        self.boss_max_hp = boss_hp
+        self.player_stats = player_stats  # Reference to player stats
+        self.exp_reward = exp_reward
         self.phase = "attack"
         self.selected_attack = None
         self.is_leafy_boss = boss_leafy
@@ -253,10 +256,14 @@ class BossBattle:
         self.max_happiness = max_happiness
         self.spare_phrase = spare_phrase
         self.happiness = 0
+        self.battle_won = False
+        self.battle_spared = False
+        self.level_up_message = None
 
     def run(self, screen):
         clock = pygame.time.Clock()
         font = pygame.font.SysFont(None, 36)
+        small_font = pygame.font.SysFont(None, 24)
         
         self.boss_img = pygame.transform.scale(pygame.image.load(self.boss_img_path), (128, 128))
         self.heart_img = pygame.transform.scale(pygame.image.load(self.heart_img_path), (32, 32))
@@ -268,7 +275,7 @@ class BossBattle:
         fight_bar_x = 300
         fight_direction = 1
 
-        while self.boss_hp > 0 and self.player_hp > 0:
+        while self.boss_hp > 0 and self.player_stats.current_hp > 0:
             screen.fill((0, 0, 0))
             dt = clock.tick(60) / 1000
             
@@ -276,6 +283,7 @@ class BossBattle:
             if self.happiness >= self.max_happiness and self.phase != "spare_dialogue":
                 self.dialogue_manager.start_dialogue(f"* you spared {self.boss_name} *")
                 self.phase = "spare_dialogue"
+                self.battle_spared = True
             
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -292,6 +300,15 @@ class BossBattle:
                                     self.boss_hp = 0
                             else:
                                 self.dialogue_manager.skip()
+                        elif self.phase == "victory" or self.phase == "level_up":
+                            if self.dialogue_manager.current_text == self.dialogue_manager.full_text:
+                                if self.phase == "level_up":
+                                    self.phase = "victory"
+                                    self.dialogue_manager.start_dialogue(f"* You defeated {self.boss_name}! *")
+                                else:
+                                    return True  # End battle
+                            else:
+                                self.dialogue_manager.skip()
                 # Check for input events during all phases
                 if self.phase == "final_dialogue":
                     if self.dialogue_manager.handle_input(event):
@@ -299,7 +316,7 @@ class BossBattle:
                         if choice == "run":
                             self.boss_hp = 0  # End battle successfully
                         elif choice == "do not":
-                            self.player_hp = 0  # Player loses
+                            self.player_stats.current_hp = 0  # Player loses
                 elif self.phase == "choice":
                     if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                         mx, my = pygame.mouse.get_pos()
@@ -317,11 +334,29 @@ class BossBattle:
                 elif self.phase == "fight":
                     if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                         if 370 <= fight_bar_x <= 420:
-                            self.boss_hp -= 10
-                        self.phase = "attack"
-                        attack_start = time.time()
+                            damage_dealt = self.player_stats.get_damage()
+                            self.boss_hp -= damage_dealt
+                            if self.boss_hp <= 0:
+                                self.battle_won = True
+                                # Give EXP and check for level up
+                                leveled_up = self.player_stats.gain_exp(self.exp_reward)
+                                if leveled_up:
+                                    hp_gained = self.player_stats.get_max_hp() - (self.player_stats.get_max_hp() - 8)
+                                    self.level_up_message = f"* LEVEL UP! You are now level {self.player_stats.level}! *\n* Max HP increased by {hp_gained}! *\n* ATK increased by 3! *"
+                                    self.dialogue_manager.start_dialogue(self.level_up_message)
+                                    self.phase = "level_up"
+                                else:
+                                    self.dialogue_manager.start_dialogue(f"* You defeated {self.boss_name}! *\n* You gained {self.exp_reward} EXP! *")
+                                    self.phase = "victory"
+                            else:
+                                self.phase = "attack"
+                                attack_start = time.time()
+                        else:
+                            # Miss - still go to attack phase but no damage
+                            self.phase = "attack"
+                            attack_start = time.time()
 
-            if self.is_leafy_boss and self.player_hp <= 2 and not self.final_dialogue_started:
+            if self.is_leafy_boss and self.player_stats.current_hp <= 2 and not self.final_dialogue_started:
                 self.phase = "final_dialogue"
                 self.dialogue_manager.start_choice_dialogue("MUAHAHAHAHA YOUR SOUL IS GONNA BE MINE", ["run", "do not"])
                 self.final_dialogue_started = True
@@ -333,7 +368,10 @@ class BossBattle:
             elif self.phase == "spare_dialogue":
                 self.dialogue_manager.update()
                 self.dialogue_manager.draw(screen)
-
+                
+            elif self.phase == "victory" or self.phase == "level_up":
+                self.dialogue_manager.update()
+                self.dialogue_manager.draw(screen)
                     
             elif self.phase == "attack":
                 keys = pygame.key.get_pressed()
@@ -352,7 +390,9 @@ class BossBattle:
                         self.selected_attack.projectiles.clear()
                     hit = self.selected_attack.update(time.time() - attack_start, self.heart_rect)
                     if hit:
-                        self.player_hp -= 0.1
+
+                        if self.player_stats.take_damage(0.1):
+                            raise SystemExit()
                     self.selected_attack.draw(screen)
                 
 
@@ -388,9 +428,24 @@ class BossBattle:
             if self.phase == "attack": 
                 screen.blit(self.heart_img, self.heart_rect)
                 pygame.draw.rect(screen, (255, 255, 255), BOX, 2)
-                
-            screen.blit(font.render(f"{self.boss_name} HP: {self.boss_hp}", True, (255, 255, 255)), (50, 50))
-            screen.blit(font.render(f"Player HP: {math.floor(self.player_hp)}", True, (255, 255, 255)), (50, 80))
+            
+            # Draw boss HP bar
+            
+            
+            # Draw player stats
+            stats = self.player_stats.get_stats_display()
+            screen.blit(font.render(f"{self.boss_name} HP: {self.boss_hp}/{self.boss_max_hp}", True, (255, 255, 255)), (50, 50))
+            screen.blit(font.render(f"Player HP: {math.floor(stats['hp'])}/{stats['max_hp']}", True, (255, 255, 255)), (50, 80))
+            
+            boss_hp_percentage = stats['hp'] / stats['max_hp']
+            boss_hp_bar_width = int(200 * boss_hp_percentage)
+            pygame.draw.rect(screen, (255, 0, 0), (50, 110, boss_hp_bar_width, 20))
+            pygame.draw.rect(screen, (255, 255, 255), (50, 110, 200, 20), 2)
+
+            # Draw additional stats
+            screen.blit(small_font.render(f"Level: {stats['level']}", True, (255, 255, 255)), (400, 50))
+            screen.blit(small_font.render(f"EXP: {stats['exp']}", True, (255, 255, 255)), (400, 70))
+            screen.blit(small_font.render(f"ATK: {stats['damage']}", True, (255, 255, 255)), (400, 90))
 
             pygame.display.flip()
         
